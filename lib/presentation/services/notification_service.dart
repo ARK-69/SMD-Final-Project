@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
 
 import '../../model/place.dart';
 import '../theme/app_theme.dart';
@@ -40,7 +41,7 @@ class NotificationService {
 
     final title = 'New location added to favourites';
     final body = '${place.title} has been added in the favourites';
-    final imageBytes = await _loadLocationImage();
+    final imageBytes = await _loadLocationImage(place.imageUrl);
     final image = ByteArrayAndroidBitmap(imageBytes);
 
     final androidDetails = AndroidNotificationDetails(
@@ -67,7 +68,22 @@ class NotificationService {
     );
   }
 
-  Future<Uint8List> _loadLocationImage() async {
+  Future<Uint8List> _loadLocationImage(String imageUrl) async {
+    if (imageUrl.startsWith('http')) {
+      try {
+        final response = await http.get(Uri.parse(imageUrl));
+        if (response.statusCode == 200) {
+          return response.bodyBytes;
+        }
+      } catch (_) {}
+    } else {
+      // Load from assets
+      try {
+        final data = await rootBundle.load(imageUrl);
+        return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      } catch (_) {}
+    }
+    // Fallback to placeholder
     final data = await rootBundle.load(Place.localImageAsset);
     return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
   }
